@@ -1,0 +1,10 @@
+*.a
+*.so
+*.lib
+&.dll
+
+.vscode/*
+
+**/build/
+
+
