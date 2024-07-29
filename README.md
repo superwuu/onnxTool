@@ -2,11 +2,13 @@
 
 介绍
 
-## 用法
+## 工具库获取方法
 
 > [!IMPORTANT]
 >
-> 重要点
+> 出于工程考虑，需要自己提供OpenCV库，需要支持dnn模块的版本，参考版本为 **OpenCV 4.4.0**
+>
+> [**OpenCV安装示例（linux && windows）**](https://blog.csdn.net/KRISNAT/article/details/122154491)
 
 ### 1.从源码编译
 
@@ -33,7 +35,6 @@ cd .. && bash install.bash
 
 <details open>
 <summary>Windows</summary>
-
 `Windows` 系统命令如下`（cmake＋msbuild）`
 
 ```bash
@@ -44,7 +45,7 @@ cmake ..
 # make编译
 make
 # 构建库文件
-cd .. && bash install.bash
+cd .. && install.bat
 ```
 </details>
 
@@ -52,6 +53,10 @@ cd .. && bash install.bash
 ### 2.调用库直接运行
 
 xxx
+
+## 用法
+
+用法用法
 
 ## 已支持算法
 
