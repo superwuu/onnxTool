@@ -8,6 +8,7 @@ if not exist build\lib mkdir build\lib
 :: 复制所有的 .h 文件
 xcopy /Y /I *.h build\include\
 xcopy /Y /I depend\*.h build\include\
+xcopy /Y /I code\*.h build\include\
 
 :: 复制所有的 .dll和.lib 文件
 xcopy /Y /I depend\*.dll build\lib\

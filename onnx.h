@@ -41,24 +41,23 @@ namespace Otool {
 		int GetObjNum();
 	public:
 		// 预处理，输入为batchSize图像vector，输出为[Batch, Channel, Height, Width]
-		void Preprocessing(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage);
+		void Preprocess(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage);
 		// 后处理，输入为batchSize份内存，分别为不同的图像的结果，输出为batch个Info结构的数组
-		void Postprocessing(const std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo);
+		void Postprocess_all(std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo);
+		virtual void Postprocess(float* output, std::vector<Info>& resInfo, int index);
 
 		// Preprocessing
 		// 从原图尺寸到模型尺寸的转换函数，在Preprocessing中调用
 		void Letterbox(cv::Mat& src, const cv::Size& size);
+		void Letterbox_lr(cv::Mat& src, const cv::Size& size);
 
-		// Postprocessing
-		void detect_yolov10(const float* output, std::vector<Info>& resInfo, int index);	// index为batch中下标
-		void detect_yolov8(float* output, std::vector<Info>& resInfo, int index);
-	private:
+	protected:
 		// 计算vector所有元素的乘积
 		int64_t VectorProduct(const std::vector<int64_t>& vec) {
 			return std::accumulate(vec.begin(), vec.end(), 1, std::multiplies<int64_t>());
 		}
 
-	private:
+	protected:
 		// onnxruntime环境相关变量
 		Ort::Env _env;
 		Ort::SessionOptions _sessionOptions;

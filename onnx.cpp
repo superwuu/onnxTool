@@ -75,7 +75,7 @@ void Otool::OnnxTool::OnnxBatchRun(const std::vector<cv::Mat>& srcImages, std::v
     try {
         cv::Mat blobImage;
         // 预处理
-        Preprocessing(srcImages, blobImage);
+        Preprocess(srcImages, blobImage);
 
         // 元素长度
         int64_t _inputTensorLength = VectorProduct(_inputTensorShape);
@@ -98,7 +98,7 @@ void Otool::OnnxTool::OnnxBatchRun(const std::vector<cv::Mat>& srcImages, std::v
             outputData.push_back(all_data + count / _batchSize * i);
         }
         // 后处理
-        Postprocessing(outputData, resInfo);
+        Postprocess_all(outputData, resInfo);
     }
     catch (const std::string& _msg) {
         std::cout << "[----error message----] " << _msg.c_str() << std::endl;
@@ -111,7 +111,7 @@ void Otool::OnnxTool::OnnxBatchRun(const std::vector<cv::Mat>& srcImages, std::v
     }
 }
 
-void Otool::OnnxTool::Preprocessing(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage) {
+void Otool::OnnxTool::Preprocess(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage) {
     try {
         std::cout << "----Using default Preprocessing!----" << std::endl;
         std::vector<cv::Mat> middleImages;
@@ -134,20 +134,14 @@ void Otool::OnnxTool::Preprocessing(const std::vector<cv::Mat>& inputImages, cv:
     }
 }
 
-void Otool::OnnxTool::Postprocessing(const std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo) {
+void Otool::OnnxTool::Postprocess_all(std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo) {
     try {
-        std::cout << "----Using default Postprocessing! [detector] [yolov" + std::to_string(detectorVersion) + "] ----" << std::endl;
+        std::cout << "----Postprocessing! [detector] [yolov" + std::to_string(detectorVersion) + "] ----" << std::endl;
         // 遍历所有batchSize的图像
         for (size_t i = 0; i < outputVector.size(); ++i) {
             std::vector<Info> tmp_info;
-            if (detectorVersion == 10) {
-                detect_yolov10(outputVector[i], tmp_info, i);
-                resInfo.push_back(tmp_info);
-            }
-            else if (detectorVersion == 8) {
-                detect_yolov8(outputVector[i], tmp_info, i);
-                resInfo.push_back(tmp_info);
-            }
+            Postprocess(outputVector[i], tmp_info, i);
+            resInfo.push_back(tmp_info);
         }
     }
     catch (const std::exception& e) {
@@ -155,6 +149,10 @@ void Otool::OnnxTool::Postprocessing(const std::vector<float*>& outputVector, st
         if (_session != nullptr) { delete _session; }
         std::exit(7758258);
     }
+}
+
+void Otool::OnnxTool::Postprocess(float* output, std::vector<Info>& resInfo, int index) {
+    std::cout << "----[error] no postprocess function! Please check your class! ----" << std::endl;
 }
 
 void Otool::OnnxTool::SavePicture(const cv::Mat& image, const std::vector<Info>& resInfo, const std::string& savePath) {
@@ -216,76 +214,40 @@ void Otool::OnnxTool::Letterbox(cv::Mat& src, const cv::Size& size) {
     }
 }
 
-void Otool::OnnxTool::detect_yolov10(const float* output, std::vector<Info>& resInfo, int index) {
-    // yolov10返回结果格式为[batchsize,300,6]
-    // 300为设置的返回框数量
-    // 6为{left, top, right ,bottom, confidence, class]
-    // 前四个均为在input尺寸下的具体坐标值
-    int num_detections = _outputTensorShape[1];
-    int _iorigW = _origWidth[index], iorigH = _origHeight[index];
-    int _ipadW = _padWidth[index], _ipadH = _padHeight[index];
-    int _ipreW = _preWidth[index], _ipreH = _preHeight[index];
+void Otool::OnnxTool::Letterbox_lr(cv::Mat& src, const cv::Size& size) {
+    try {
+        int origW = src.cols;
+        int origH = src.rows;
+        int tarW = size.width;
+        int tarH = size.height;
 
-    for (size_t j = 0; j < num_detections; ++j) {
-        float confidence = output[j * 6 + 4];
-        if (confidence > threshold_confidence) {
-            float left = output[j * 6 + 0];
-            float top = output[j * 6 + 1];
-            float right = output[j * 6 + 2];
-            float bottom = output[j * 6 + 3];
-            int classId = static_cast<int>(output[j * 6 + 5]);
-            int x = static_cast<int>((left - _ipadW) * _iorigW / _ipreW);
-            int y = static_cast<int>((top - _ipadH) * iorigH / _ipreH);
-            int width = static_cast<int>((right - left) * _iorigW / _ipreW);
-            int height = static_cast<int>((bottom - top) * iorigH / _ipreH);
-            cv::Rect _rect(x, y, width, height);
-            resInfo.push_back(Info(_rect, confidence, classId));
-        }
+        SetOrigSize(origW, origH);
+
+        float ratio = std::min(tarH / (origH * 1.0), tarW / (origW * 1.0));
+
+        int _spreWidth = round(origW * ratio);
+        int _spreHeight = round(origH * ratio);
+
+        _preWidth.push_back(_spreWidth);
+        _preHeight.push_back(_spreHeight);
+
+        int padW = (tarW - _spreWidth);
+        int padH = (tarH - _spreHeight);
+
+        cv::resize(src, src, cv::Size(_spreWidth, _spreHeight));
+
+        int bottom = int(round(padH + 0.1));
+        int right = int(round(padW + 0.1));
+
+        _padWidth.push_back(right);
+        _padHeight.push_back(bottom);
+
+        cv::copyMakeBorder(src, src, 0, bottom, 0, right, 0, cv::Scalar(114, 114, 114));
+    }
+    catch (const std::exception& e) {
+        std::cout << "[----Letterbox_LR error----] " << e.what() << std::endl;
     }
 }
-
-void Otool::OnnxTool::detect_yolov8(float* output, std::vector<Info>& resInfo, int index) {
-    // yolov8返回结果格式为[batchsize,classnum+4,cnt]
-    // classnum+4中前四个为框的x,y,w,h，后classnum个为属于每个框的置信度
-    int _iorigW = _origWidth[index], iorigH = _origHeight[index];
-    int _ipadW = _padWidth[index], _ipadH = _padHeight[index];
-    int _ipreW = _preWidth[index], _ipreH = _preHeight[index];
-
-    std::vector<cv::Rect> _rects_nms;
-    std::vector<float> _confidence_nms;
-    std::vector<int> _class;
-    cv::Mat all_scores = cv::Mat(cv::Size(_outputTensorShape[2], _outputTensorShape[1]), CV_32F, output).t();
-    float* pdata = (float*)all_scores.data;
-    for (size_t r = 0; r < all_scores.rows; ++r) {
-        cv::Mat scores(cv::Size(OnnxTool::GetObjNum(), 1), CV_32F, pdata + 4);
-        cv::Point max_loc;
-        double max_confidence;
-        cv::minMaxLoc(scores, 0, &max_confidence, 0, &max_loc);
-        if (max_confidence > threshold_confidence) {
-            float x = (pdata[0] - _ipadW) * _iorigW / _ipreW;
-            float y = (pdata[1] - _ipadH) * iorigH / _ipreH;
-            float w = pdata[2] * _iorigW / _ipreW;
-            float h = pdata[3] * iorigH / _ipreH;
-            int left = int(x - 0.5 * w);
-            int top = int(y - 0.5 * h);
-            int right = int(x + 0.5 * w);
-            int bottom = int(y + 0.5 * h);
-            cv::Rect _rect(left, top, w, h);
-            _rects_nms.push_back(cv::Rect(left, top, w, h));
-            _confidence_nms.push_back(max_confidence);
-            _class.push_back(max_loc.x);
-        }
-        pdata += _outputTensorShape[1];
-    }
-    std::vector<int> _idx_nms;
-    cv::dnn::NMSBoxes(_rects_nms, _confidence_nms, 0, threshold_nms, _idx_nms);
-    for (auto& index : _idx_nms) {
-        resInfo.push_back(Info(_rects_nms[index], _confidence_nms[index], _class[index]));
-    }
-}
-
-
-
 
 // protected
 void Otool::OnnxTool::SetBatchSize(int num) {

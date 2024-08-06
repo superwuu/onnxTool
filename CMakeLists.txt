@@ -15,7 +15,7 @@ set(cmake_cxx_standard 14)
 set(cmake_cxx_standard_required on)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-add_library(onnxTool SHARED onnx.h onnx.cpp)
+add_library(onnxTool SHARED onnx.h onnx.cpp code/yolov8.h code/yolov10.h)
 
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} PRIVATE ${OpenCV_LIBS})
 

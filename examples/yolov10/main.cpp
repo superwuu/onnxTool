@@ -1,14 +1,7 @@
 #include "onnx.h"
+#include "yolov10.h"
 
 using namespace std;
-
-class My : public Otool::OnnxTool {
-public:
-	std::vector<cv::Mat> _inputSrcImages;
-	std::vector<std::vector<Otool::Info>> _resInfo;
-	std::string modelPath = "./model/yolov10n.onnx";
-private:
-};
 
 bool getImgPath(int argc,char** argv,string& inputName,string& outputName){
 	if(argc==3){
@@ -43,17 +36,9 @@ int main(int argc,char **argv) {
 
 	cv::Mat src_image = cv::imread(inputName);
 
-	My mytest;
-	mytest._inputSrcImages.push_back(src_image);
-
-	mytest.SetBatchSize(mytest._inputSrcImages.size());
-	mytest.SetThresholdConfidence(0.1);
-	mytest.ReadModel(mytest.modelPath);
-	mytest.SetDectorVersion(10);
-
-	mytest.OnnxBatchRun(mytest._inputSrcImages, mytest._resInfo);
-
-	mytest.SavePicture(mytest._inputSrcImages[0], mytest._resInfo[0], outputName);
+	Yolov10 yolov10({ src_image }, "model/yolov10n.onnx", 0.4);
+	yolov10.Detection();
+	yolov10.SavePic(0,outputName);
 
 	return 0;
 }

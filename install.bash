@@ -7,6 +7,7 @@ mkdir -p build/lib
 # 复制所有的 .h 文件
 cp ./*.h build/include/
 cp ./depend/*.h build/include/
+cp ./code/*.h build/include/
 
 # 复制所有的 .so 文件
 cp ./depend/*.so* build/lib/
