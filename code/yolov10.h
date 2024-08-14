@@ -24,15 +24,15 @@ public:
         return _res;
     }
 
-    void Postprocess(float* output, std::vector<Otool::Info>& resInfo, int index) {
+    void Postprocess(float* output, std::vector<Otool::Info>& resInfo, const int level_index, const int batch_index) {
         // yolov10返回结果格式为[batchsize,300,6]
         // 300为设置的返回框数量
         // 6为{left, top, right ,bottom, confidence, class]
         // 前四个均为在input尺寸下的具体坐标值
-        int num_detections = _outputTensorShape[1];
-        int _iorigW = _origWidth[index], iorigH = _origHeight[index];
-        int _ipadW = _padWidth[index], _ipadH = _padHeight[index];
-        int _ipreW = _preWidth[index], _ipreH = _preHeight[index];
+        int num_detections = _outputTensorShape[level_index][1];
+        int _iorigW = _origWidth[batch_index], iorigH = _origHeight[batch_index];
+        int _ipadW = _padWidth[batch_index], _ipadH = _padHeight[batch_index];
+        int _ipreW = _preWidth[batch_index], _ipreH = _preHeight[batch_index];
 
         for (size_t j = 0; j < num_detections; ++j) {
             float confidence = output[j * 6 + 4];

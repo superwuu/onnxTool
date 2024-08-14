@@ -4,6 +4,7 @@
 
 - 使用面向对象的封装方式，提供多层次接口，满足不同层次需求
 - 支持图像的多batch推理
+- 支持模型的多输出头推理
 
 > [!IMPORTANT]
 >
@@ -37,7 +38,6 @@
 用法参考`examples`文件夹下的实现方式
 
 ```c++
-#include "onnx.h"	// 引入核心层api
 #include "algo.h"	// 引入应用层api	需根据code文件夹下具体算法进行修改 e.g "yolov10.h"
 
 以yolov10为例：
@@ -72,6 +72,10 @@ struct Info {
 
 当需要对自己的算法进行推理时，仅需重写预处理和后处理函数即可
 
+**预处理：**多个图像合成一张图像
+
+**后处理：**遍历batch_size每张图像，再遍历图像中的每个输出头。函数需要处理的是单个输出头（level_index）的单张图像（batch_index）
+
 > [!NOTE]
 >
 > **预处理可不重写（提供默认方式），后处理一定要重写覆盖**
@@ -95,7 +99,6 @@ void Otool::OnnxTool::Preprocess(const std::vector<cv::Mat>& inputImages, cv::Ma
     }
     blobImage = cv::dnn::blobFromImages(middleImages, 1. / 255., cv::Size(_modelWidth, _modelHeight), cv::Scalar(0, 0, 0), false);
 }
-
 // Letterbox将原图像格式转换为推理格式，并进行填充。此函数使用的yolov5的图像填充方式
 // Letterbox_lr功能同Letterbox。此函数使用的是yolox的图像填充方式
 ```
@@ -103,14 +106,16 @@ void Otool::OnnxTool::Preprocess(const std::vector<cv::Mat>& inputImages, cv::Ma
 **后处理：**
 
 ```c++
-// 后处理，输入为每张图像的推理结果的内存指针，输出这张图像的检测矩形框信息，通过resInfo返回，index为这张图像在batch张图像中的索引
-    virtual void Postprocess(float* output, std::vector<Info>& resInfo, int index);
+// 后处理，输入为每张图像的推理结果的内存指针，输出这张图像的检测矩形框信息，通过resInfo返回，level_index是不同输出头的索引，batch_index是batch索引
+    virtual void Postprocess(float* output, std::vector<Info>& resInfo, const int level_index, const int batch_index);
 // 获取原图尺寸（在Letterbox中完成保存）
-	int _iorigW = _origWidth[index], iorigH = _origHeight[index];
+	int _iorigW = _origWidth[batch_index], iorigH = _origHeight[batch_index];
 // 获取同比例缩放后图像尺寸（在Letterbox中完成保存）
-	int _ipreW = _preWidth[index], _ipreH = _preHeight[index];
+	int _ipreW = _preWidth[batch_index], _ipreH = _preHeight[batch_index];
 // 获取填充的像素信息（在Letterbox中完成保存）
-	int _ipadW = _padWidth[index], _ipadH = _padHeight[index];
+	int _ipadW = _padWidth[batch_index], _ipadH = _padHeight[batch_index];
+// 获取每个输出头的格式 e.g [3,80,40,40]
+	std::vector<int64_t> _levelOutputShape = _outputTensorShape[level_index]
 ```
 
 #### 方式三：从源码编译
@@ -148,6 +153,8 @@ cd .. && install.bat
 
 - yolov8【目标检测】
 - yolov10【目标检测】
+- Adaface【人脸检索】
+- face-detector（yolo-face ＋ Adaface）【人脸识别】
 
 ## 参考
 

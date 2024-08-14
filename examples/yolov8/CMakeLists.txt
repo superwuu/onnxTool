@@ -13,9 +13,9 @@ set(cmake_cxx_standard 14)
 set(cmake_cxx_standard_required on)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
-target_include_directories(${PROJECE_NAME} PRIVATE "${ONNXTOOL_DIR}/include")
+target_include_directories(onnxDemo PRIVATE "${ONNXTOOL_DIR}/include")
 
-TARGET_LINK_LIBRARIES(${PROJECE_NAME} PRIVATE ${OpenCV_LIBS})
+TARGET_LINK_LIBRARIES(onnxDemo PRIVATE ${OpenCV_LIBS})
 
 if(WIN32)
     file(GLOB LIBS "${ONNXTOOL_DIR}/lib/*.lib")

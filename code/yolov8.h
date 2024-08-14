@@ -24,17 +24,17 @@ public:
 		return _res;
 	}
 
-    void Postprocess(float* output, std::vector<Otool::Info>& resInfo, int index) {
-	    // yolov8返回结果格式为[batchsize,classnum+4,cnt]
+    void Postprocess(float* output, std::vector<Otool::Info>& resInfo, const int level_index, const int batch_index) {
+        // yolov8返回结果格式为[batchsize,classnum+4,cnt]
         // classnum+4中前四个为框的x,y,w,h，后classnum个为属于每个框的置信度
-        int _iorigW = _origWidth[index], iorigH = _origHeight[index];
-        int _ipadW = _padWidth[index], _ipadH = _padHeight[index];
-        int _ipreW = _preWidth[index], _ipreH = _preHeight[index];
+        int _iorigW = _origWidth[batch_index], iorigH = _origHeight[batch_index];
+        int _ipadW = _padWidth[batch_index], _ipadH = _padHeight[batch_index];
+        int _ipreW = _preWidth[batch_index], _ipreH = _preHeight[batch_index];
 
         std::vector<cv::Rect> _rects_nms;
         std::vector<float> _confidence_nms;
         std::vector<int> _class;
-        cv::Mat all_scores = cv::Mat(cv::Size(_outputTensorShape[2], _outputTensorShape[1]), CV_32F, output).t();
+        cv::Mat all_scores = cv::Mat(cv::Size(_outputTensorShape[level_index][2], _outputTensorShape[level_index][1]), CV_32F, output).t();
         float* pdata = (float*)all_scores.data;
         for (size_t r = 0; r < all_scores.rows; ++r) {
             cv::Mat scores(cv::Size(OnnxTool::GetObjNum(), 1), CV_32F, pdata + 4);
@@ -55,15 +55,14 @@ public:
                 _confidence_nms.push_back(max_confidence);
                 _class.push_back(max_loc.x);
             }
-            pdata += _outputTensorShape[1];
+            pdata += _outputTensorShape[level_index][1];
         }
         std::vector<int> _idx_nms;
         cv::dnn::NMSBoxes(_rects_nms, _confidence_nms, 0, threshold_nms, _idx_nms);
         for (auto& index : _idx_nms) {
             resInfo.push_back(Otool::Info(_rects_nms[index], _confidence_nms[index], _class[index]));
         }
-	}
-
+    }
 private:
 	std::vector<cv::Mat> _inputSrcImages;
 	std::vector<std::vector<Otool::Info>> _res;

@@ -1,5 +1,4 @@
-#ifndef ONNX_H
-#define ONNX_H
+#pragma once
 
 #include <iostream>
 #include <numeric>
@@ -14,9 +13,11 @@ namespace Otool {
 
 	struct Info {
 		Info(cv::Rect rect, float confidence, int classId) :_rect(rect), _confidence(confidence), _classId(classId) {}
+		Info(std::vector<float> output) :_output(output){}
 		cv::Rect _rect;
 		float _confidence;
 		int _classId;
+		std::vector<float> _output;
 	};
 
 	class OnnxTool {
@@ -41,10 +42,10 @@ namespace Otool {
 		int GetObjNum();
 	public:
 		// 预处理，输入为batchSize图像vector，输出为[Batch, Channel, Height, Width]
-		void Preprocess(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage);
-		// 后处理，输入为batchSize份内存，分别为不同的图像的结果，输出为batch个Info结构的数组
-		void Postprocess_all(std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo);
-		virtual void Postprocess(float* output, std::vector<Info>& resInfo, int index);
+		virtual void Preprocess(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage);
+		// 后处理，输入为batchSize份内存，分别为不同的图像的结果，输出为batchsize个vector<Info>结构的数组
+		void Postprocess_all(std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo, const int batch_index);
+		virtual void Postprocess(float* output, std::vector<Info>& resInfo, const int level_index, const int batch_index);
 
 		// Preprocessing
 		// 从原图尺寸到模型尺寸的转换函数，在Preprocessing中调用
@@ -68,7 +69,11 @@ namespace Otool {
 		std::vector<std::string> _inputName;	// e.g. "image"
 		std::vector<std::string> _outputName;	// e.g. "output"
 		std::vector<int64_t> _inputTensorShape;	// e.g. [1,3,640,640]
-		std::vector<int64_t> _outputTensorShape;	// e.g. [1,3,640,640]
+		std::vector<std::vector<int64_t>> _outputTensorShape;	// e.g. [[1,3,640,640], [1,3,320,320]] 多输出头 
+
+		// 输入输出头的数量
+		size_t _inputHeadNum;
+		size_t _outputHeadNum;
 
 		// 输入模型推理的尺寸
 		int _modelWidth;
@@ -94,16 +99,14 @@ namespace Otool {
 
 		std::vector<cv::Scalar> _color = {};
 		std::vector<std::string> _className = { "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
-			       "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
-			       "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-			       "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
-			       "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-			       "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-			       "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
-			       "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
-			       "hair drier", "toothbrush" };
+				   "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+				   "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+				   "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+				   "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+				   "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
+				   "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone",
+				   "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
+				   "hair drier", "toothbrush" };
 	};
 
 };
-
-#endif

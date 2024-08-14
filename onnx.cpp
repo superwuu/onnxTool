@@ -19,15 +19,18 @@ bool Otool::OnnxTool::ReadModel(const std::string& modelPath) {
 
         // 读取模型，创建session
 #ifdef _WIN32
-		std::wstring _wmodelPath(modelPath.begin(), modelPath.end());
+        std::wstring _wmodelPath(modelPath.begin(), modelPath.end());
         _session = new Ort::Session(_env, _wmodelPath.c_str(), _sessionOptions);
 #else
-		_session = new Ort::Session(_env, modelPath.c_str(), _sessionOptions);
+        _session = new Ort::Session(_env, modelPath.c_str(), _sessionOptions);
 #endif
 
         // 获取模型输入输出信息
         size_t _numInputNodes = _session->GetInputCount();
         size_t _numOutputNodes = _session->GetOutputCount();
+
+        _inputHeadNum = _numInputNodes;
+        _outputHeadNum = _numOutputNodes;
 
         Ort::AllocatorWithDefaultOptions _allocator;
         // 获取输入节点的名称和维度信息
@@ -39,12 +42,18 @@ bool Otool::OnnxTool::ReadModel(const std::string& modelPath) {
         _inputTensorShape = _inputTensorInfo.GetShape();
 
         // 获取输出节点的名称和维度信息
-        _outputName.push_back(std::string(""));
-        auto _outputNameAlloc = _session->GetOutputNameAllocated(0, _allocator);
-        _outputName[0].append(_outputNameAlloc.get());
-        Ort::TypeInfo _outputTypeInfo = _session->GetOutputTypeInfo(0);
-        auto _outputTensorInfo = _outputTypeInfo.GetTensorTypeAndShapeInfo();
-        _outputTensorShape = _outputTensorInfo.GetShape();
+        for (size_t i = 0; i < _numOutputNodes; ++i) {
+            _outputName.push_back(std::string(""));
+            auto _outputNameAlloc = _session->GetOutputNameAllocated(i, _allocator);
+            _outputName[i].append(_outputNameAlloc.get());
+            Ort::TypeInfo _outputTypeInfo = _session->GetOutputTypeInfo(i);
+            auto _outputTensorInfo = _outputTypeInfo.GetTensorTypeAndShapeInfo();
+            std::vector<std::int64_t> shape_one = _outputTensorInfo.GetShape();
+            _outputTensorShape.push_back(shape_one);
+            if (_outputTensorShape[i][0] == -1) {
+                _outputTensorShape[i][0] = _batchSize;
+            }
+        }
 
         // 从输入节点维度中获取输入图像的高度和宽度
         _modelHeight = _inputTensorShape[2];
@@ -53,9 +62,6 @@ bool Otool::OnnxTool::ReadModel(const std::string& modelPath) {
         // 如果是多batch推理，则设置batchsize
         if (_inputTensorShape[0] == -1) {
             _inputTensorShape[0] = _batchSize;
-        }
-        if (_outputTensorShape[0] == -1) {
-            _outputTensorShape[0] = _batchSize;
         }
 
         return true;
@@ -85,20 +91,29 @@ void Otool::OnnxTool::OnnxBatchRun(const std::vector<cv::Mat>& srcImages, std::v
 
         // 推理
         const std::array<const char*, 1> _inputName_run = { _inputName[0].c_str() };
-        const std::array<const char*, 1> _outputName_run = { _outputName[0].c_str() };
-        std::vector<Ort::Value> _ortOutputs = _session->Run(Ort::RunOptions{ nullptr }, _inputName_run.data(), input_tensors.data(), _inputName_run.size(), _outputName_run.data(), _outputName_run.size());
-
-        // all_data是结果的内存起点
-        float* all_data = _ortOutputs[0].GetTensorMutableData<float>();
-        // 内存上的分界
-        size_t count = _ortOutputs[0].GetTensorTypeAndShapeInfo().GetElementCount();
-        // vector存放多batch结果
-        std::vector<float*> outputData;
-        for (size_t i = 0; i < _batchSize; ++i) {
-            outputData.push_back(all_data + count / _batchSize * i);
+        //const std::array<const char*, 3> _outputName_run = { _outputName[0].c_str(),_outputName[1].c_str(),_outputName[2].c_str() };
+        // const std::array<const char*, 1> _outputName_run = { _outputName[0].c_str() };
+        std::vector<const char*> _OutputName_vec;
+        for (size_t i = 0; i < _outputName.size();++i) {
+            _OutputName_vec.push_back(_outputName[i].c_str());
         }
-        // 后处理
-        Postprocess_all(outputData, resInfo);
+        std::vector<Ort::Value> _ortOutputs = _session->Run(Ort::RunOptions{ nullptr }, _inputName_run.data(), input_tensors.data(), _inputName_run.size(), _OutputName_vec.data(), _OutputName_vec.size());
+
+        std::vector<size_t> level_count;
+        for (size_t i = 0; i < _outputHeadNum; ++i) {
+            level_count.push_back(_ortOutputs[i].GetTensorTypeAndShapeInfo().GetElementCount() / _batchSize);
+        }
+
+        // 对batch中每张图像
+        for (size_t i = 0; i < _batchSize; ++i) {
+            // 每张图片一个vec,存储不同输出头的内存起点
+            std::vector<float*> batch_data_vec;
+            for (size_t j = 0; j < _outputHeadNum; ++j) {
+                batch_data_vec.push_back(_ortOutputs[j].GetTensorMutableData<float>() + i * level_count[j]);
+            }
+
+            Postprocess_all(batch_data_vec, resInfo, i);
+        }
     }
     catch (const std::string& _msg) {
         std::cout << "[----error message----] " << _msg.c_str() << std::endl;
@@ -134,15 +149,15 @@ void Otool::OnnxTool::Preprocess(const std::vector<cv::Mat>& inputImages, cv::Ma
     }
 }
 
-void Otool::OnnxTool::Postprocess_all(std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo) {
+void Otool::OnnxTool::Postprocess_all(std::vector<float*>& outputVector, std::vector<std::vector<Info>>& resInfo, const int batch_index) {
     try {
         std::cout << "----Postprocessing! [detector] [yolov" + std::to_string(detectorVersion) + "] ----" << std::endl;
-        // 遍历所有batchSize的图像
+
+        std::vector<Info> one_info;     // 一张图像中的信息
         for (size_t i = 0; i < outputVector.size(); ++i) {
-            std::vector<Info> tmp_info;
-            Postprocess(outputVector[i], tmp_info, i);
-            resInfo.push_back(tmp_info);
+            Postprocess(outputVector[i], one_info, i, batch_index);
         }
+        resInfo.push_back(one_info);
     }
     catch (const std::exception& e) {
         std::cout << "[----PostProcessing error----] " << e.what() << std::endl;
@@ -151,7 +166,7 @@ void Otool::OnnxTool::Postprocess_all(std::vector<float*>& outputVector, std::ve
     }
 }
 
-void Otool::OnnxTool::Postprocess(float* output, std::vector<Info>& resInfo, int index) {
+void Otool::OnnxTool::Postprocess(float* output, std::vector<Info>& resInfo, const int level_index, const int batch_index) {
     std::cout << "----[error] no postprocess function! Please check your class! ----" << std::endl;
 }
 
