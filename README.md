@@ -8,7 +8,7 @@
 
 > [!IMPORTANT]
 >
-> 出于工程考虑，`OpenCV`与`onnxruntime`的运行库均需要独立引入与链接，提供一份`OpenCV`与`onnxruntime`的库文件供下载。[**OpenCV&onnxruntime(linux＋x64)**](https://pan.baidu.com/s/1VurO0Bh1Mhm7keLkuZ2qCg?pwd=onnx)
+> 出于工程考虑，`OpenCV`与`onnxruntime`的运行库均需要独立引入与链接，提供一份`OpenCV`与`onnxruntime`的库文件供下载。[**OpenCV&onnxruntime(linux＋x64)**](https://github.com/superwuu/onnxTool/releases/tag/v3.0)
 >
 > `openCV`需支持dnn模块，参考版本为 **OpenCV-4.7.0**；`onnxrutime`参考版本为 **onnxruntime-1.20.1**
 
@@ -81,9 +81,9 @@ struct Info {
 
 当需要对自己的算法进行推理时，仅需重写预处理和后处理函数即可
 
-**预处理：**多个图像合成一张图像
+- **预处理：**多个图像合成一张图像
 
-**后处理：**遍历batch_size每张图像，再遍历图像中的每个输出头。函数需要处理的是单个输出头（level_index）的单张图像（batch_index）
+- **后处理：**遍历batch_size每张图像，再遍历图像中的每个输出头。函数需要处理的是单个输出头（level_index）的单张图像（batch_index）
 
 > [!NOTE]
 >
