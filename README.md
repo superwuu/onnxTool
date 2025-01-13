@@ -1,6 +1,6 @@
 # onnxTool：深度学习onnxRuntime部署工具
 
-一款C++编写的基于OpenCV和onnxruntime的深度学习部署工具
+一款C++编写的基于`OpenCV`和`onnxruntime`的深度学习部署工具
 
 - 使用面向对象的封装方式，提供多层次接口，满足不同层次需求
 - 支持图像的多batch推理
@@ -8,9 +8,9 @@
 
 > [!IMPORTANT]
 >
-> 出于工程考虑，需要自己提供OpenCV库，需要支持dnn模块的版本，参考版本为 **OpenCV 4.4.0**
+> 出于工程考虑，`OpenCV`与`onnxruntime`的运行库均需要独立引入与链接，提供一份`OpenCV`与`onnxruntime`的库文件供下载。[**OpenCV&onnxruntime(linux＋x64)**](https://pan.baidu.com/s/1VurO0Bh1Mhm7keLkuZ2qCg?pwd=onnx)
 >
-> [**OpenCV安装示例（linux && windows）**](https://blog.csdn.net/KRISNAT/article/details/122154491)
+> `openCV`需支持dnn模块，参考版本为 **OpenCV-4.7.0**；`onnxrutime`参考版本为 **onnxruntime-1.20.1**
 
 ## 系统架构
 
@@ -18,7 +18,7 @@
 
 ### 1. 工具库层次说明
 
-- **基础层**：OpenCV和onnxruntime运行库，本项目的基础部分，为上层结构提供接口实现
+- **基础层**：`OpenCV`和`onnxruntime`运行库，本项目的基础部分，为上层结构提供接口实现
 - **核心层**：`onnx.h`与`onnx.cpp`文件，基于基础层api，实现深度学习网络推理部分，为上层提供接口实现
 - **应用层**：`code/*.h`文件，基于核心层api，提供一系列的深度学习算法实现，为用户提供对象实现
 
@@ -42,14 +42,23 @@
 
 以yolov10为例：
 // api1：构建推理对象
-// inputImages:需要推理图像的vector ---- modelPath:onnx文件路径 ---- thresholdconfidence:推理置信度
+// 1.1: inputImages:需要推理图像的vector ---- modelPath:onnx文件路径 ---- thresholdconfidence:推理置信度
 	Yolov10(std::vector<cv::Mat> inputImages, std::string modelPath, float thresholdconfidence);
-// api2：推理运行
+// 1.2:modelPath:onnx文件路径
+	Yolov10(std::string modelPath);
+
+// api2:加载图像(用于1.2方式构建对象)
+	// inputImages:需要推理图像的vector
+	void SetBatchImgs(std::vector<cv::Mat> inputImages);
+
+// api3：推理运行
 	void Detection();
-// api3：保存图像（可选）
+
+// api4：保存图像（可选）
 // idx:推理图像vector中的下标 ---- save_path:图像结果保存路径
 	void SavePic(int idx, std::string save_path);
-// api4：输出推理结果（可选）
+
+// api5：输出推理结果（可选）
 // 返回batch张图像的矩形框结果,每个矩形框格式未Otool::Info
 	std::vector<std::vector<Otool::Info>> GetResult();
 
@@ -131,8 +140,8 @@ mkdir build && cd build
 cmake ..
 # make编译
 make
-# 构建库文件
-cd .. && bash install.bash
+# 安装,在源文件目录创建install放置
+make install
 ```
 `Windows` 系统命令如下 **（cmake＋msbuild）**
 
@@ -141,13 +150,13 @@ cd .. && bash install.bash
 mkdir build && cd build
 # cmake构建
 cmake ..
-# make编译
-make
-# 构建库文件
-cd .. && install.bat
+# msbuild编译
+msbuild .\onnxTool.vcxproj /p:Configuration=Release
+# 安装,在源文件目录创建install放置
+msbuild .\INSTALL.vcxproj /p:Configuration=Release
 ```
 
-执行完成后，在build目录下出现`include`和`lib`两个目录，即onnxTool工具库。在工程中引入这两个目录即可
+执行完成后，在源文件目录的install目录下出现`include`和`lib`两个目录，即onnxTool工具库。在工程中引入这两个目录即可
 
 ## 已支持算法
 
@@ -158,6 +167,8 @@ cd .. && install.bat
 
 ## 参考
 
-[onnxruntime c++推理](https://blog.csdn.net/qq_41822101/article/details/137688484)
+[**onnxruntime c++推理**](https://blog.csdn.net/qq_41822101/article/details/137688484)
 
-[yolov5的letterbox填充](https://zhuanlan.zhihu.com/p/692080647)
+[**yolov5的letterbox填充**](https://zhuanlan.zhihu.com/p/692080647)
+
+[**OpenCV安装示例（linux && windows）**](https://blog.csdn.net/KRISNAT/article/details/122154491)

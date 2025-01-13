@@ -51,7 +51,11 @@ bool Otool::OnnxTool::ReadModel(const std::string& modelPath) {
             std::vector<std::int64_t> shape_one = _outputTensorInfo.GetShape();
             _outputTensorShape.push_back(shape_one);
             if (_outputTensorShape[i][0] == -1) {
+                _isOutputUDFsize.push_back(true);
                 _outputTensorShape[i][0] = _batchSize;
+            }
+            else{
+                _isOutputUDFsize.push_back(false);
             }
         }
 
@@ -61,6 +65,7 @@ bool Otool::OnnxTool::ReadModel(const std::string& modelPath) {
 
         // 如果是多batch推理，则设置batchsize
         if (_inputTensorShape[0] == -1) {
+            _isInputUDFsize = true;
             _inputTensorShape[0] = _batchSize;
         }
 
@@ -264,9 +269,26 @@ void Otool::OnnxTool::Letterbox_lr(cv::Mat& src, const cv::Size& size) {
     }
 }
 
+void Otool::OnnxTool::Reset() {
+   _origWidth.clear();
+   _origHeight.clear();
+   _padWidth.clear();
+   _padHeight.clear();
+   _preWidth.clear();
+   _preHeight.clear();
+}
+
 // protected
 void Otool::OnnxTool::SetBatchSize(int num) {
     _batchSize = num;
+    if(_isInputUDFsize){
+        _inputTensorShape[0] = num;
+    }
+    for(size_t i=0;i<_outputTensorShape.size();++i){
+        if(_isOutputUDFsize[i] == true){
+            _outputTensorShape[i][0] = num;
+        }
+    }
 }
 
 void Otool::OnnxTool::SetOrigSize(int width, int height) {

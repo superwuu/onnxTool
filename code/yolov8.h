@@ -3,7 +3,7 @@
 
 class Yolov8 : public Otool::OnnxTool {
 public:
-	Yolov8(std::vector<cv::Mat> inputImages, std::string modelPath, float thresholdconfidence)
+	Yolov8(std::vector<cv::Mat> inputImages, std::string modelPath, float thresholdconfidence = 0.4)
 		:_inputSrcImages(inputImages)
 	{
 		SetBatchSize(_inputSrcImages.size());
@@ -12,10 +12,26 @@ public:
 		ReadModel(modelPath);
 	}
 
+	Yolov8(std::string modelPath, float thresholdconfidence = 0.4)
+	{
+		ReadModel(modelPath);
+	}
+
+    void SetBatchImgs(std::vector<cv::Mat> inputImages){
+        _inputSrcImages = inputImages;
+        Reset();
+    }
+
 	void Detection() {
 		_res.clear();
+        if(_inputSrcImages.size()==0){
+            std::cout<<"lack of srcImgs"<<std::endl;
+            return;
+        }
+		SetBatchSize(_inputSrcImages.size());
 		OnnxBatchRun(_inputSrcImages, _res);
 	}
+
 	void SavePic(int idx, std::string save_path) {
 		SavePicture(_inputSrcImages[idx], _res[idx], save_path);
 	}

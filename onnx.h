@@ -52,6 +52,10 @@ namespace Otool {
 		void Letterbox(cv::Mat& src, const cv::Size& size);
 		void Letterbox_lr(cv::Mat& src, const cv::Size& size);
 
+	public:
+		// 重置批次图像设置
+		void Reset();
+
 	protected:
 		// 计算vector所有元素的乘积
 		int64_t VectorProduct(const std::vector<int64_t>& vec) {
@@ -70,6 +74,9 @@ namespace Otool {
 		std::vector<std::string> _outputName;	// e.g. "output"
 		std::vector<int64_t> _inputTensorShape;	// e.g. [1,3,640,640]
 		std::vector<std::vector<int64_t>> _outputTensorShape;	// e.g. [[1,3,640,640], [1,3,320,320]] 多输出头 
+
+		bool _isInputUDFsize = false;
+        std::vector<bool> _isOutputUDFsize;
 
 		// 输入输出头的数量
 		size_t _inputHeadNum;

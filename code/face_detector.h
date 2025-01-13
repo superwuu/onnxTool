@@ -10,8 +10,23 @@ public:
 		ReadModel(modelPath);
 	}
 
+	FaceDetector(std::string modelPath)
+	{
+		ReadModel(modelPath);
+	}
+
+    void SetBatchImgs(std::vector<cv::Mat> inputImages){
+        _inputSrcImages = inputImages;
+        Reset();
+    }
+
 	void Detection() {
 		_res.clear();
+        if(_inputSrcImages.size()==0){
+            std::cout<<"lack of srcImgs"<<std::endl;
+            return;
+        }
+		SetBatchSize(_inputSrcImages.size());
 		OnnxBatchRun(_inputSrcImages, _res);
 	}
 

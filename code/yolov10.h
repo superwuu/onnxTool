@@ -1,10 +1,11 @@
 #pragma once
 #include "onnx.h"
 
-class Yolov10 : public Otool::OnnxTool {
+class Yolov10 : public Otool::OnnxTool
+{
 public:
     Yolov10(std::vector<cv::Mat> inputImages, std::string modelPath, float thresholdconfidence)
-        :_inputSrcImages(inputImages)
+        : _inputSrcImages(inputImages)
     {
         SetBatchSize(_inputSrcImages.size());
         SetThresholdConfidence(thresholdconfidence);
@@ -12,19 +13,41 @@ public:
         ReadModel(modelPath);
     }
 
-    void Detection() {
+    Yolov10(std::string modelPath, float thresholdconfidence = 0.4)
+    {
+        ReadModel(modelPath);
+    }
+
+    void SetBatchImgs(std::vector<cv::Mat> inputImages)
+    {
+        _inputSrcImages = inputImages;
+        Reset();
+    }
+
+    void Detection()
+    {
         _res.clear();
+        if (_inputSrcImages.size() == 0)
+        {
+            std::cout << "lack of srcImgs" << std::endl;
+            return;
+        }
+        SetBatchSize(_inputSrcImages.size());
         OnnxBatchRun(_inputSrcImages, _res);
     }
-    void SavePic(int idx, std::string save_path) {
+
+    void SavePic(int idx, std::string save_path)
+    {
         SavePicture(_inputSrcImages[idx], _res[idx], save_path);
     }
 
-    std::vector<std::vector<Otool::Info>> GetResult() {
+    std::vector<std::vector<Otool::Info>> GetResult()
+    {
         return _res;
     }
 
-    void Postprocess(float* output, std::vector<Otool::Info>& resInfo, const int level_index, const int batch_index) {
+    void Postprocess(float *output, std::vector<Otool::Info> &resInfo, const int level_index, const int batch_index)
+    {
         // yolov10返回结果格式为[batchsize,300,6]
         // 300为设置的返回框数量
         // 6为{left, top, right ,bottom, confidence, class]
@@ -34,9 +57,11 @@ public:
         int _ipadW = _padWidth[batch_index], _ipadH = _padHeight[batch_index];
         int _ipreW = _preWidth[batch_index], _ipreH = _preHeight[batch_index];
 
-        for (size_t j = 0; j < num_detections; ++j) {
+        for (size_t j = 0; j < num_detections; ++j)
+        {
             float confidence = output[j * 6 + 4];
-            if (confidence > threshold_confidence) {
+            if (confidence > threshold_confidence)
+            {
                 float left = output[j * 6 + 0];
                 float top = output[j * 6 + 1];
                 float right = output[j * 6 + 2];
