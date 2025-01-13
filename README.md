@@ -14,7 +14,9 @@
 
 ## 系统架构
 
-![结构](./image/system.png)
+<p align="center">
+  <img src="./image/system.png" alt="结构">
+</p>
 
 ### 1. 工具库层次说明
 
@@ -40,27 +42,27 @@
 ```c++
 #include "algo.h"	// 引入应用层api	需根据code文件夹下具体算法进行修改 e.g "yolov10.h"
 
-以yolov10为例：
+// 以yolov10为例：
 // api1：构建推理对象
-// 1.1: inputImages:需要推理图像的vector ---- modelPath:onnx文件路径 ---- thresholdconfidence:推理置信度
-	Yolov10(std::vector<cv::Mat> inputImages, std::string modelPath, float thresholdconfidence);
-// 1.2:modelPath:onnx文件路径
-	Yolov10(std::string modelPath);
+    // 1.1: inputImages:需要推理图像的vector ---- modelPath:onnx文件路径 ---- thresholdconfidence:推理置信度
+    Yolov10(std::vector<cv::Mat> inputImages, std::string modelPath, float thresholdconfidence);
+    // 1.2:modelPath:onnx文件路径
+    Yolov10(std::string modelPath);
 
 // api2:加载图像(用于1.2方式构建对象)
-	// inputImages:需要推理图像的vector
-	void SetBatchImgs(std::vector<cv::Mat> inputImages);
+    // inputImages:需要推理图像的vector
+    void SetBatchImgs(std::vector<cv::Mat> inputImages);
 
 // api3：推理运行
-	void Detection();
+    void Detection();
 
 // api4：保存图像（可选）
-// idx:推理图像vector中的下标 ---- save_path:图像结果保存路径
-	void SavePic(int idx, std::string save_path);
+    // idx:推理图像vector中的下标 ---- save_path:图像结果保存路径
+    void SavePic(int idx, std::string save_path);
 
 // api5：输出推理结果（可选）
-// 返回batch张图像的矩形框结果,每个矩形框格式未Otool::Info
-	std::vector<std::vector<Otool::Info>> GetResult();
+    // 返回batch张图像的矩形框结果,每个矩形框格式未Otool::Info
+    std::vector<std::vector<Otool::Info>> GetResult();
 
 // Otool::Info:
 struct Info {
@@ -77,13 +79,15 @@ struct Info {
 
 核心层的推理流程如下：
 
-![](./image/pipeline.png)
+<p align="center">
+  <img src="./image/pipeline.png" alt="系统流程">
+</p>
 
 当需要对自己的算法进行推理时，仅需重写预处理和后处理函数即可
 
-**预处理：** 多个图像合成一张图像
+**预处理:** 多个图像合成一张图像
 
-**后处理：** 遍历batch_size每张图像，再遍历图像中的每个输出头。函数需要处理的是单个输出头（level_index）的单张图像（batch_index）
+**后处理:** 遍历batch_size每张图像，再遍历图像中的每个输出头。函数需要处理的是单个输出头（level_index）的单张图像（batch_index）
 
 > [!NOTE]
 >
@@ -96,18 +100,18 @@ struct Info {
 // inputImages:需要推理图像的vector ---- blobImage:用于接受预处理结果
     virtual void Preprocess(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage);
 // e.g 实现示例，若不重写Preprocess，则使用下述预处理方式
-void Otool::OnnxTool::Preprocess(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage) {
-    std::cout << "----Using default Preprocessing!----" << std::endl;
-    std::vector<cv::Mat> middleImages;
-    for (size_t i = 0; i < inputImages.size(); ++i) {
-        cv::Mat img_m;
-        inputImages[i].convertTo(img_m, CV_32F);   // 转float
-        Letterbox(img_m, cv::Size(_modelWidth, _modelHeight));   // 填充并resize
-        // Letterbox_lr(img_m, cv::Size(_modelWidth, _modelHeight));   // 填充并resize
-        middleImages.push_back(img_m);
+    void Otool::OnnxTool::Preprocess(const std::vector<cv::Mat>& inputImages, cv::Mat& blobImage) {
+        std::cout << "----Using default Preprocessing!----" << std::endl;
+        std::vector<cv::Mat> middleImages;
+        for (size_t i = 0; i < inputImages.size(); ++i) {
+            cv::Mat img_m;
+            inputImages[i].convertTo(img_m, CV_32F);   // 转float
+            Letterbox(img_m, cv::Size(_modelWidth, _modelHeight));   // 填充并resize
+            // Letterbox_lr(img_m, cv::Size(_modelWidth, _modelHeight));   // 填充并resize
+            middleImages.push_back(img_m);
+        }
+        blobImage = cv::dnn::blobFromImages(middleImages, 1. / 255., cv::Size(_modelWidth, _modelHeight), cv::Scalar(0, 0, 0), false);
     }
-    blobImage = cv::dnn::blobFromImages(middleImages, 1. / 255., cv::Size(_modelWidth, _modelHeight), cv::Scalar(0, 0, 0), false);
-}
 // Letterbox将原图像格式转换为推理格式，并进行填充。此函数使用的yolov5的图像填充方式
 // Letterbox_lr功能同Letterbox。此函数使用的是yolox的图像填充方式
 ```
@@ -118,13 +122,13 @@ void Otool::OnnxTool::Preprocess(const std::vector<cv::Mat>& inputImages, cv::Ma
 // 后处理，输入为每张图像的推理结果的内存指针，输出这张图像的检测矩形框信息，通过resInfo返回，level_index是不同输出头的索引，batch_index是batch索引
     virtual void Postprocess(float* output, std::vector<Info>& resInfo, const int level_index, const int batch_index);
 // 获取原图尺寸（在Letterbox中完成保存）
-	int _iorigW = _origWidth[batch_index], iorigH = _origHeight[batch_index];
+    int _iorigW = _origWidth[batch_index], iorigH = _origHeight[batch_index];
 // 获取同比例缩放后图像尺寸（在Letterbox中完成保存）
-	int _ipreW = _preWidth[batch_index], _ipreH = _preHeight[batch_index];
+    int _ipreW = _preWidth[batch_index], _ipreH = _preHeight[batch_index];
 // 获取填充的像素信息（在Letterbox中完成保存）
-	int _ipadW = _padWidth[batch_index], _ipadH = _padHeight[batch_index];
+    int _ipadW = _padWidth[batch_index], _ipadH = _padHeight[batch_index];
 // 获取每个输出头的格式 e.g [3,80,40,40]
-	std::vector<int64_t> _levelOutputShape = _outputTensorShape[level_index]
+    std::vector<int64_t> _levelOutputShape = _outputTensorShape[level_index]
 ```
 
 #### 方式三：从源码编译
